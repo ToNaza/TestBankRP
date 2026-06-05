@@ -217,13 +217,12 @@
         }
     </style>
 
-    <script type="module">
+<script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getDatabase, ref, set, get, update, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Конфігурація з твого скриншоту
-// Конфігурація з урахуванням регіону бази даних
+        // Конфігурація з урахуванням регіону бази даних
         const firebaseConfig = {
             apiKey: "AIzaSyAaL9c9uVRdEItXIyKCsOZt2yr0BlxHxxs",
             authDomain: "virtual-bank-test.firebaseapp.com",
@@ -232,7 +231,7 @@
             messagingSenderId: "889467133904",
             appId: "1:889467133904:web:8cf94719b828906cf323d5",
             measurementId: "G-J1M3V14W8E",
-            databaseURL: "https://virtual-bank-test-default-rtdb.europe-west1.firebasedatabase.app" // ДОДАНО ЦЕЙ РЯДОК
+            databaseURL: "https://virtual-bank-test-default-rtdb.europe-west1.firebasedatabase.app"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -255,8 +254,10 @@
         const targetCardInput = document.getElementById('target_card');
         const targetAmountInput = document.getElementById('target_amount');
 
-        let currentUser = null;
-        let userCardNumber = "";
+        // Перемінні поточного сеансу (чітко розділені)
+        let currentUserId = null;
+        let currentUserCard = "";
+        let currentUserName = "";
 
         // Функція генерації номеру карти (формат: 0000 0000 0000)
         function generateCardNumber() {
@@ -269,51 +270,55 @@
 
         // Вхід/Вихід в один клік
         regBtn.addEventListener('click', () => {
-            if (!currentUser) {
+            if (!currentUserId) {
                 signInWithPopup(auth, provider).catch(err => console.error("Помилка авторизації:", err));
             } else {
                 signOut(auth);
             }
         });
 
-// Слідкуємо за станом авторизації
+        // Слідкуємо за станом авторизації
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                currentUser = user;
+                currentUserId = user.uid;
+                currentUserName = user.displayName;
                 regBtn.innerText = "Вийти";
-                nameEl.innerText = user.displayName;
+                nameEl.innerText = currentUserName;
 
-                const userRef = ref(db, 'users/' + user.uid);
+                const userRef = ref(db, 'users/' + currentUserId);
                 const snapshot = await get(userRef);
 
                 if (!snapshot.exists()) {
-                    userCardNumber = generateCardNumber();
-                    // Инициализируем пользователя с нулевым балансом сразу
+                    currentUserCard = generateCardNumber();
                     await set(userRef, {
-                        card: userCardNumber,
+                        card: currentUserCard,
                         balance: 0,
-                        name: user.displayName
+                        name: currentUserName
                     });
-                    await set(ref(db, 'cards/' + userCardNumber.replace(/\s/g, '')), user.uid);
+                    await set(ref(db, 'cards/' + currentUserCard.replace(/\s/g, '')), currentUserId);
                 } else {
                     const userData = snapshot.val();
-                    userCardNumber = userData.card;
-                    // Если вдруг ветка была создана криво, подстраховываем баланс
+                    currentUserCard = userData.card;
                     if (userData.balance === undefined) {
                         await update(userRef, { balance: 0 });
                     }
                 }
 
-                cardIdEl.innerText = userCardNumber;
+                cardIdEl.innerText = currentUserCard;
 
-                // Слухаємо оновлення балансу в реальному часі
-                onValue(ref(db, 'users/' + user.uid + '/balance'), (subSnapshot) => {
+                // Стрілочні функції фіксують точний UID користувача на момент завантаження
+                const myUid = currentUserId;
+
+                // Слухаємо оновлення особистого балансу в реальному часі
+                onValue(ref(db, 'users/' + myUid + '/balance'), (subSnapshot) => {
+                    if (myUid !== currentUserId) return; // Захист від накладання сесій
                     const currentBalance = subSnapshot.val() !== null ? subSnapshot.val() : 0;
                     summEl.innerText = `$ ${currentBalance}`;
                 });
 
-                // Слухаємо оновлення історії транзакцій в реальному часі
-                onValue(ref(db, 'history/' + user.uid), (historySnapshot) => {
+                // Слухаємо оновлення особистої історії транзакцій в реальному часі
+                onValue(ref(db, 'history/' + myUid), (historySnapshot) => {
+                    if (myUid !== currentUserId) return; // Захист від накладання сесій
                     infoBlock.innerHTML = "";
                     if (historySnapshot.exists()) {
                         const data = historySnapshot.val();
@@ -331,7 +336,9 @@
                 });
 
             } else {
-                currentUser = null;
+                currentUserId = null;
+                currentUserCard = "";
+                currentUserName = "";
                 regBtn.innerText = "Увійти";
                 nameEl.innerText = "Name";
                 cardIdEl.innerText = "0000 0000 0000";
@@ -340,42 +347,35 @@
             }
         });
 
-        // Кнопка +100 (Исправленная логика обновления)
+        // Кнопка +100
         clickMoneyBtn.addEventListener('click', async () => {
-            if (!currentUser) return alert("Спочатку увійдіть в акаунт!");
+            if (!currentUserId) return alert("Спочатку увійдіть в акаунт!");
             
-            const userRef = ref(db, 'users/' + currentUser.uid);
+            const myUid = currentUserId;
+            const userRef = ref(db, 'users/' + myUid);
             
             try {
-                // Берем свежий снимок данных перед изменением
                 const snapshot = await get(userRef);
                 let currentBalance = 0;
-                
                 if (snapshot.exists()) {
                     currentBalance = snapshot.val().balance || 0;
                 }
                 
-                const newBalance = currentBalance + 100;
-                
-                // Сначала обновляем баланс
-                await update(userRef, { balance: newBalance });
-                
-                // Затем пушим в историю
-                const historyRef = ref(db, 'history/' + currentUser.uid);
-                await push(historyRef, {
+                await update(userRef, { balance: currentBalance + 100 });
+                await push(ref(db, 'history/' + myUid), {
                     type: 'deposit',
                     amount: 100,
                     status: 'success',
                     msg: 'Поповнення через заглушку +100'
                 });
             } catch (error) {
-                console.error("Ошибка при добавлении валюты:", error);
+                console.error("Помилка додавання коштів:", error);
             }
         });
 
         // Керування модальним вікном
         operationBtn.addEventListener('click', () => {
-            if (!currentUser) return alert("Спочатку увійдіть в акаунт!");
+            if (!currentUserId) return alert("Спочатку увійдіть в акаунт!");
             modal.style.display = 'block';
         });
 
@@ -385,76 +385,76 @@
             targetAmountInput.value = "";
         });
 
-        // Переказ коштів (Оформити операцію)
+        // Переказ коштів (Виправлена ізольована логіка)
         modalConfirm.addEventListener('click', async () => {
-            const rawCard = targetCardInput.value.replace(/\s/g, ''); // прибираємо пробіли
+            const rawCard = targetCardInput.value.replace(/\s/g, '');
             const amount = parseInt(targetAmountInput.value);
 
             if (!rawCard || isNaN(amount) || amount <= 0) {
                 return alert("Некоректні дані операції");
             }
 
-            const senderUid = currentUser.uid;
+            // Фіксуємо поточного відправника у локальну змінну всередині функції
+            const senderUid = currentUserId; 
             const senderRef = ref(db, 'users/' + senderUid);
-            const senderSnapshot = await get(senderRef);
-            const senderData = senderSnapshot.val();
-
-            // Перевірка балансу відправника
-            if (senderData.balance < amount) {
-                // Фіксуємо відхилену операцію в історії відправника
-                await push(ref(db, 'history/' + senderUid), {
-                    type: 'transfer_fail',
-                    amount: amount,
-                    status: 'fail',
-                    msg: 'Угода відхилена, бракує коштів'
-                });
-                modalCancel.click();
-                return;
-            }
-
-            // Шукаємо отримувача за номером карти
-            const cardMappingSnapshot = await get(ref(db, 'cards/' + rawCard));
-            if (!cardMappingSnapshot.exists()) {
-                alert("Карту отримувача не знайдено!");
-                return;
-            }
-
-            const receiverUid = cardMappingSnapshot.val();
             
-            if (receiverUid === senderUid) {
-                alert("Не можна переводити кошти самому собі!");
-                return;
+            try {
+                const senderSnapshot = await get(senderRef);
+                const senderData = senderSnapshot.val();
+
+                if (senderData.balance < amount) {
+                    await push(ref(db, 'history/' + senderUid), {
+                        type: 'transfer_fail',
+                        amount: amount,
+                        status: 'fail',
+                        msg: 'Угода відхилена, бракує коштів'
+                    });
+                    modalCancel.click();
+                    return;
+                }
+
+                const cardMappingSnapshot = await get(ref(db, 'cards/' + rawCard));
+                if (!cardMappingSnapshot.exists()) {
+                    alert("Карту отримувача не знайдено!");
+                    return;
+                }
+
+                const receiverUid = cardMappingSnapshot.val();
+                
+                if (receiverUid === senderUid) {
+                    alert("Не можна переводити кошти самому собі!");
+                    return;
+                }
+
+                const receiverRef = ref(db, 'users/' + receiverUid);
+                const receiverSnapshot = await get(receiverRef);
+                const receiverData = receiverSnapshot.val();
+
+                // Зміна балансів без торкання глобальних змінних
+                await update(senderRef, { balance: senderData.balance - amount });
+                await update(receiverRef, { balance: (receiverData.balance || 0) + amount });
+
+                const formattedTargetCard = targetCardInput.value;
+
+                // Запис транзакцій
+                await push(ref(db, 'history/' + senderUid), {
+                    type: 'send',
+                    amount: amount,
+                    status: 'success',
+                    msg: `Переказ на рахунок ${formattedTargetCard}`
+                });
+
+                await push(ref(db, 'history/' + receiverUid), {
+                    type: 'receive',
+                    amount: amount,
+                    status: 'success',
+                    msg: `Поповнення від рахунка ${senderData.card}`
+                });
+
+                modalCancel.click();
+            } catch (err) {
+                console.error("Помилка під час виконання транзакції:", err);
             }
-
-            const receiverRef = ref(db, 'users/' + receiverUid);
-            const receiverSnapshot = await get(receiverRef);
-            const receiverData = receiverSnapshot.val();
-
-            // Списання у відправника
-            await update(senderRef, { balance: senderData.balance - amount });
-            // Нарахування отримувачу
-            await update(receiverRef, { balance: (receiverData.balance || 0) + amount });
-
-            // Форматуємо номер для виведення в історію
-            const formattedTargetCard = targetCardInput.value;
-
-            // Запис в історію відправника
-            await push(ref(db, 'history/' + senderUid), {
-                type: 'send',
-                amount: amount,
-                status: 'success',
-                msg: `Переказ на рахунок ${formattedTargetCard}`
-            });
-
-            // Запис в історію отримувача
-            await push(ref(db, 'history/' + receiverUid), {
-                type: 'receive',
-                amount: amount,
-                status: 'success',
-                msg: `Поповнення від рахунка ${senderData.card}`
-            });
-
-            modalCancel.click();
         });
     </script>
 </body>
