@@ -223,6 +223,7 @@
         import { getDatabase, ref, set, get, update, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         // Конфігурація з твого скриншоту
+// Конфігурація з урахуванням регіону бази даних
         const firebaseConfig = {
             apiKey: "AIzaSyAaL9c9uVRdEItXIyKCsOZt2yr0BlxHxxs",
             authDomain: "virtual-bank-test.firebaseapp.com",
@@ -230,7 +231,8 @@
             storageBucket: "virtual-bank-test.appspot.com",
             messagingSenderId: "889467133904",
             appId: "1:889467133904:web:8cf94719b828906cf323d5",
-            measurementId: "G-J1M3V14W8E"
+            measurementId: "G-J1M3V14W8E",
+            databaseURL: "https://virtual-bank-test-default-rtdb.europe-west1.firebasedatabase.app" // ДОДАНО ЦЕЙ РЯДОК
         };
 
         const app = initializeApp(firebaseConfig);
