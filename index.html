@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Kudsc</title>
+</head>
+<body>
+    <header>
+        <h1 style="color:white;">Bank Kudsc</h1>
+        <button id="register">Увійти</button>
+    </header>
+    <main>
+        <div class="card"> 
+            <p id="name">Завантаження...</p>  
+            <p id="card_id">0000 0000 0000</p> 
+            <p id="summ">$ 0</p> 
+        </div>
+
+        <div class="block">
+            <div id="info">
+                </div>
+            <button id="operation">Створити операцію</button> 
+            <button id="clickmoney">+100</button>
+        </div>
+    </main>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3>Нова операція</h3>
+            <input type="text" id="target_card" placeholder="Номер карти отримувача" maxlength="14">
+            <input type="number" id="target_amount" placeholder="Сума ($)" min="1">
+            <div class="modal-buttons">
+                <button id="modal_cancel" style="background-color: #8c2525;">Скасувати</button>
+                <button id="modal_confirm" style="background-color: #258c39;">Оформити</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            min-height: 100%;
+            width: 100%;
+        }
+
+        body {
+            background: #04004a;
+            background: linear-gradient(182deg, rgb(82, 82, 82) 0%, rgb(1, 0, 5) 100%);
+            background-attachment: fixed; 
+            background-repeat: no-repeat;
+            background-size: cover;
+            min-height: 100vh; 
+            margin: 0;
+            overflow-x: hidden;
+            font-family: sans-serif;
+        }
+
+        header {
+            background: #000000;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.5) 91%, rgba(0, 0, 0, 0.048) 100%);
+            display: flex;
+            padding: 5px;
+        }
+
+        header h1 {
+            margin-bottom: 5px;
+        }
+
+        header button {
+            position: absolute;
+            right: 0;
+            margin: 5px;
+            width: 150px;
+            height: 30px;
+            border-radius: 10px;
+            background-color: gray;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .card {
+            background-color: rgb(26, 26, 26);
+            width: 350px;
+            height: 150px;
+            color: white;
+            padding: 20px;
+            position: fixed;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: solid black 3px;
+            border-radius: 10px;
+        }
+
+        #name, #card_id {
+            margin-bottom: 5px;
+            font-size: 20px;
+        }
+        
+        #summ {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            margin: 10px;
+            color: #00ff00;
+            font-size: 20px;
+        }
+
+        .block {
+            background-color: rgba(97, 97, 97, 0.692);
+            width: 450px;
+            height: 300px;
+            color: white;
+            padding: 20px;
+            position: fixed;
+            top: 73%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: solid black 3px;
+            border-radius: 10px;
+        }
+
+        .block button {
+            width: 190px;
+            height: 30px;
+            margin: 5px;
+            border-radius: 7px;
+            border: 1px solid black;
+            cursor: pointer;
+        }
+
+        #info {
+            background-color: rgba(0, 0, 0, 0.555);
+            width: 405px;
+            height: 200px;
+            border-radius: 8px;
+            border: solid black 3px;
+            overflow-y: auto; /* Скрол для операцій */
+            padding: 5px 0;
+        }
+
+        .diya, .nodiya {
+            width: 390px;
+            height: 50px;
+            padding: 5px;
+            margin: 5px auto;
+            border-radius: 8px;
+            border: solid black 3px;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .diya { background-color: rgba(0, 0, 0, 0.466); }
+        .nodiya { background-color: rgba(255, 0, 0, 0.466); }
+
+        #check { font-weight: bold; }
+
+        /* Стилі модального вікна */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 10;
+        }
+
+        .modal-content {
+            background-color: rgb(35, 35, 35);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #000;
+            width: 300px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .modal-content input {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid black;
+            background-color: #fff;
+            color: #000;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .modal-buttons button {
+            width: 45%;
+            height: 30px;
+            border-radius: 5px;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getDatabase, ref, set, get, update, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Конфігурація з твого скриншоту
+        const firebaseConfig = {
+            apiKey: "AIzaSyAaL9c9uVRdEItXIyKCsOZt2yr0BlxHxxs",
+            authDomain: "virtual-bank-test.firebaseapp.com",
+            projectId: "virtual-bank-test",
+            storageBucket: "virtual-bank-test.appspot.com",
+            messagingSenderId: "889467133904",
+            appId: "1:889467133904:web:8cf94719b828906cf323d5",
+            measurementId: "G-J1M3V14W8E"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+        const provider = new GoogleAuthProvider();
+
+        // DOM Елементи
+        const regBtn = document.getElementById('register');
+        const nameEl = document.getElementById('name');
+        const cardIdEl = document.getElementById('card_id');
+        const summEl = document.getElementById('summ');
+        const infoBlock = document.getElementById('info');
+        const clickMoneyBtn = document.getElementById('clickmoney');
+        const operationBtn = document.getElementById('operation');
+        
+        const modal = document.getElementById('modal');
+        const modalCancel = document.getElementById('modal_cancel');
+        const modalConfirm = document.getElementById('modal_confirm');
+        const targetCardInput = document.getElementById('target_card');
+        const targetAmountInput = document.getElementById('target_amount');
+
+        let currentUser = null;
+        let userCardNumber = "";
+
+        // Функція генерації номеру карти (формат: 0000 0000 0000)
+        function generateCardNumber() {
+            let res = '';
+            for(let i = 0; i < 3; i++) {
+                res += Math.floor(1000 + Math.random() * 9000) + (i < 2 ? ' ' : '');
+            }
+            return res;
+        }
+
+        // Вхід/Вихід в один клік
+        regBtn.addEventListener('click', () => {
+            if (!currentUser) {
+                signInWithPopup(auth, provider).catch(err => console.error("Помилка авторизації:", err));
+            } else {
+                signOut(auth);
+            }
+        });
+
+        // Слідкуємо за станом авторизації
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                regBtn.innerText = "Вийти";
+                nameEl.innerText = user.displayName;
+
+                const userRef = ref(db, 'users/' + user.uid);
+                const snapshot = await get(userRef);
+
+                if (!snapshot.exists()) {
+                    // Перший вхід: створюємо карту та базовий нульовий баланс
+                    userCardNumber = generateCardNumber();
+                    await set(userRef, {
+                        card: userCardNumber,
+                        balance: 0,
+                        name: user.displayName
+                    });
+                    // Записуємо зв'язку "номер карти -> UID", щоб шукати отримувача при переказах
+                    await set(ref(db, 'cards/' + userCardNumber.replace(/\s/g, '')), user.uid);
+                } else {
+                    userCardNumber = snapshot.val().card;
+                }
+
+                cardIdEl.innerText = userCardNumber;
+
+                // Слухаємо оновлення балансу в реальному часі
+                onValue(ref(db, 'users/' + user.uid + '/balance'), (subSnapshot) => {
+                    const currentBalance = subSnapshot.val() || 0;
+                    summEl.innerText = `$ ${currentBalance}`;
+                });
+
+                // Слухаємо оновлення історії транзакцій в реальному часі
+                onValue(ref(db, 'history/' + user.uid), (historySnapshot) => {
+                    infoBlock.innerHTML = "";
+                    if (historySnapshot.exists()) {
+                        const data = historySnapshot.val();
+                        // Сортуємо від новіших до старіших
+                        const sortedKeys = Object.keys(data).reverse();
+                        sortedKeys.forEach(key => {
+                            const tx = data[key];
+                            const div = document.createElement('div');
+                            div.className = tx.status === 'success' ? 'diya' : 'nodiya';
+                            
+                            const sign = tx.type === 'deposit' || tx.type === 'receive' ? '+' : '-';
+                            div.innerHTML = `<p id='check'>${sign} $${tx.amount}</p> <p>${tx.msg}</p>`;
+                            infoBlock.appendChild(div);
+                        });
+                    }
+                });
+
+            } else {
+                // Якщо користувач не увійшов
+                currentUser = null;
+                regBtn.innerText = "Увійти";
+                nameEl.innerText = "Name";
+                cardIdEl.innerText = "0000 0000 0000";
+                summEl.innerText = "$ 000";
+                infoBlock.innerHTML = "";
+            }
+        });
+
+        // Кнопка +100
+        clickMoneyBtn.addEventListener('click', async () => {
+            if (!currentUser) return alert("Спочатку увійдіть в акаунт!");
+            const userRef = ref(db, 'users/' + currentUser.uid);
+            const snapshot = await get(userRef);
+            if (snapshot.exists()) {
+                const currentBalance = snapshot.val().balance || 0;
+                const newBalance = currentBalance + 100;
+                
+                await update(userRef, { balance: newBalance });
+                
+                // Запис в історію
+                const historyRef = ref(db, 'history/' + currentUser.uid);
+                await push(historyRef, {
+                    type: 'deposit',
+                    amount: 100,
+                    status: 'success',
+                    msg: 'Поповнення через заглушку +100'
+                });
+            }
+        });
+
+        // Керування модальним вікном
+        operationBtn.addEventListener('click', () => {
+            if (!currentUser) return alert("Спочатку увійдіть в акаунт!");
+            modal.style.display = 'block';
+        });
+
+        modalCancel.addEventListener('click', () => {
+            modal.style.display = 'none';
+            targetCardInput.value = "";
+            targetAmountInput.value = "";
+        });
+
+        // Переказ коштів (Оформити операцію)
+        modalConfirm.addEventListener('click', async () => {
+            const rawCard = targetCardInput.value.replace(/\s/g, ''); // прибираємо пробіли
+            const amount = parseInt(targetAmountInput.value);
+
+            if (!rawCard || isNaN(amount) || amount <= 0) {
+                return alert("Некоректні дані операції");
+            }
+
+            const senderUid = currentUser.uid;
+            const senderRef = ref(db, 'users/' + senderUid);
+            const senderSnapshot = await get(senderRef);
+            const senderData = senderSnapshot.val();
+
+            // Перевірка балансу відправника
+            if (senderData.balance < amount) {
+                // Фіксуємо відхилену операцію в історії відправника
+                await push(ref(db, 'history/' + senderUid), {
+                    type: 'transfer_fail',
+                    amount: amount,
+                    status: 'fail',
+                    msg: 'Угода відхилена, бракує коштів'
+                });
+                modalCancel.click();
+                return;
+            }
+
+            // Шукаємо отримувача за номером карти
+            const cardMappingSnapshot = await get(ref(db, 'cards/' + rawCard));
+            if (!cardMappingSnapshot.exists()) {
+                alert("Карту отримувача не знайдено!");
+                return;
+            }
+
+            const receiverUid = cardMappingSnapshot.val();
+            
+            if (receiverUid === senderUid) {
+                alert("Не можна переводити кошти самому собі!");
+                return;
+            }
+
+            const receiverRef = ref(db, 'users/' + receiverUid);
+            const receiverSnapshot = await get(receiverRef);
+            const receiverData = receiverSnapshot.val();
+
+            // Списання у відправника
+            await update(senderRef, { balance: senderData.balance - amount });
+            // Нарахування отримувачу
+            await update(receiverRef, { balance: (receiverData.balance || 0) + amount });
+
+            // Форматуємо номер для виведення в історію
+            const formattedTargetCard = targetCardInput.value;
+
+            // Запис в історію відправника
+            await push(ref(db, 'history/' + senderUid), {
+                type: 'send',
+                amount: amount,
+                status: 'success',
+                msg: `Переказ на рахунок ${formattedTargetCard}`
+            });
+
+            // Запис в історію отримувача
+            await push(ref(db, 'history/' + receiverUid), {
+                type: 'receive',
+                amount: amount,
+                status: 'success',
+                msg: `Поповнення від рахунка ${senderData.card}`
+            });
+
+            modalCancel.click();
+        });
+    </script>
+</body>
+</html>
